@@ -6,40 +6,17 @@ import glob
 import sys
 from pycocotools import mask
 from PIL import Image
+from label_data import *
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate metric of the '
                                                  'results saved in pkl format')
-    parser.add_argument('--root_dir', type=str, default='E:\dataset\plant_disease\시설 작물 질병 진단 이미지\Training')
-    parser.add_argument('--output_path', type=str, default='E:\dataset\plant_disease\시설 작물 질병 진단 이미지\\train_coco.json')
+    parser.add_argument('--root_dir', type=str, default='E:\dataset\plant_disease\시설 작물 질병 진단 이미지\Validation')
+    parser.add_argument('--output_path', type=str, default='E:\dataset\plant_disease\시설 작물 질병 진단 이미지\\val_coco.json')
+    parser.add_argument('--dataset_type', type=str, default='greenhouse_crop_disease')
     args = parser.parse_args()
     return args
-
-
-greenhouse_crop_disease = [
-    '정상',
-    '가지잎곰팡이병',
-    '가지흰가루병',
-    '고추마일드모틀바이러스',
-    '고추점무늬병',
-    '단호박점무늬병',
-    '단호박흰가루병',
-    '딸기잿빛곰팡이병',
-    '딸기흰가루병',
-    '상추균핵병',
-    '상추노균병',
-    '수박탄저병',
-    '수박흰가루병',
-    '애호박점무늬병',
-    '오이녹반모자이크바이러스',
-    '오이모자이크바이러스',
-    '참외노균병',
-    '참외흰가루병',
-    '토마토잎곰팡이병',
-    '토마토황화잎말이바이러스',
-    '포도노균병',
-]
 
 
 def get_coco_template(dataset_type):
@@ -76,10 +53,12 @@ def get_coco_template(dataset_type):
     }
 
     if dataset_type == "greenhouse_crop_disease":
-        template["categories"] = [{'supercategory': v, 'id': i + 1, 'name': v} for i, v in
-                                  enumerate(greenhouse_crop_disease)]
+        labels = greenhouse_labels
     else:
         pass
+    template["categories"] = [{'supercategory': k, 'id': i + 1, 'name': k} for i, k in
+                              enumerate(labels)]
+    print(template["categories"])
     return template
 
 
@@ -119,13 +98,20 @@ def main():
     anno_id = 1
     im_id = 1
     annotations = []
+    stat_category = {}
     images = []
     for i, label_file in enumerate(label_files):
+        # if i < 172760:
+        #     continue
         if i % 10 == 0:
             print(i, len(label_files))
         label_data = json.load(open(label_file))
         im_path = os.path.join(args.root_dir, label_data["description"]["image"])
-        resized_width, resized_height = Image.open(im_path).size
+        try:
+            resized_width, resized_height = Image.open(im_path).size
+        except:
+            im_path = os.path.splitext(os.path.splitext(label_file)[0])[0] + ".jpg"
+            resized_width, resized_height = Image.open(im_path).size
         w = label_data["description"]["width"]
         h = label_data["description"]["height"]
 
@@ -134,6 +120,15 @@ def main():
             raise Exception("over one bbox")
 
         disease = label_data["annotations"]["disease"]
+        crop = label_data["annotations"]["crop"]
+        area = label_data["annotations"]["area"]
+        risk = label_data["annotations"]["risk"]
+        if crop == 0 or area == 0 or (disease != 0 and risk == 0) or (disease == 0 and risk != 0):
+            continue
+
+        class_idx = get_label_name(args.dataset_type, disease, crop, area)
+        if class_idx is None:
+            continue
 
         if resized_height == h:
             x1 = bboxes[0]["xtl"]
@@ -161,7 +156,10 @@ def main():
 
         anno["image_id"] = im_id
         anno["id"] = anno_id
-        anno["category_id"] = disease + 1
+        anno["category_id"] = class_idx
+        if class_idx not in stat_category:
+            stat_category[class_idx] = 0
+        stat_category[class_idx] += 1
         annotations.append(anno)
 
         image_info = {}
@@ -173,11 +171,12 @@ def main():
         anno_id += 1
         im_id += 1
 
-    coco = get_coco_template()
+    coco = get_coco_template(args.dataset_type)
     coco["annotations"] = annotations
     coco["images"] = images
     json.dump(coco, open(args.output_path, "w+"))
-
+    json.dump(stat_category, open(args.output_path + "_category_stat.json", "w+"))
+    print(stat_category)
     print("done")
 
 
