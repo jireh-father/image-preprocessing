@@ -1,4 +1,49 @@
 # image-preprocessing
+0. 이미지 전처리
+   - common/resize.py
+      - resize: 이미지 사이즈 작게 줄이기(yolo로 학습 시키려고 width or height 최소 길이 700으로 지정)
+      - orientation 정상으로 돌리기
+      - 에러 이미지 삭제
+1. 각 데이터셋별로 사용할 클래스 선정하기
+   - stat_category.py : 해충 데이터셋만 라벨데이터 구조가 달라서 따로 카테고리 통계를 보기 위한 코드
+   - stat_data.py : 데이터셋종류, 식물종류, 식물부위, 카테고리별로 통계 내는 코드
+   - label_data.py : 데이터셋 별로 카테고리(클래스) 정보가 들어있는 코드
+2. 각 데이터셋 coco 포멧으로 변경
+   - convert_labels_to_coco.py: coco 포멧으로 변경하는 코드로 데이터셋_phase(train or val) 별로 실행해야 함.
+   - check list
+      - resize 됐으면 bbox도 비율에 맞게 변경
+      - 실제 image_path 없을경우 처리
+      - 메타데이터가 이상할 경우 무시하도록
+      - category 확인, annotations, images 갯수 확인, anno, image 개별 아이템 확인
+   - review
+      - https://github.com/jireh-father/coco-viewer.git
+      - 실행해서 확인
+3. 전체 coco 합치기
+   - merge_cocos.py
+4. split train & val strategy
+   - stat_cocos.py
+   - coco/split_coco_train_val_strategy.py
+   - review by coco-viewer
+5. convert coco to yolo format
+6. training yolo
+
+## todo
+seed
+- 모든 train, val coco 정상여부 검토 시각 V
+  - category 정보확인 V
+  - 시각화 확인해보기 V
+- 모든 train & val coco 데이터셋 merge
+- merge한 coco 데이터셋 카테고리 통계내기
+ - 정상 최대 갯수 지정
+- merge한 coco에서 정상 최대 갯수 이하 랜덤으로 버리기
+ - 안버린것도 가지고 있기
+- split train * val
+- yolo학습
+ - yolo 데이터셋 변환
+ - yolo 학습 세팅
+ - 학습 및 평가
+
+## checklist
 0. check 
    - 노지 작물 해충 진단 이미지
     - 13 복숭아진딧물
