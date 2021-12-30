@@ -1,1 +1,1 @@
-# image-preprocessing
+# Machine learning & Deep Learning Scripts and Manuals
